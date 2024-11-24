@@ -1,91 +1,122 @@
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/user.model';
-import { auth } from '../middleware/auth.middleware';
+import express, { Router, Request, Response } from 'express';
+import { auth } from '../config/firebase';
+import { createUser, getUserByEmail, updateUser } from '../models/user';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
-    
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists' });
-    }
 
-    const user = new User({
+    // Create user in Firebase Auth
+    const userRecord = await auth.createUser({
       email,
       password,
-      name,
+      displayName: name
     });
 
-    await user.save();
+    // Create user in Firestore
+    const user = await createUser({
+      email,
+      name,
+      sobrietyDate: null,
+      addictionType: null,
+      dailyBudget: null
+    });
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-
-    res.status(201).json({ user, token });
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    });
   } catch (error) {
+    console.error('Registration Error:', error);
     res.status(400).json({ message: 'Error creating user' });
   }
 });
 
-// Login
-router.post('/login', async (req, res) => {
+// Login - Note: Actual login is handled by Firebase on the client
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
-    
-    const user = await User.findOne({ email });
+    const { email } = req.body;
+    const user = await getUserByEmail(email);
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-
-    res.json({ user, token });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        sobrietyDate: user.sobrietyDate,
+        addictionType: user.addictionType,
+        dailyBudget: user.dailyBudget
+      }
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Error logging in' });
+    console.error('Login Error:', error);
+    res.status(500).json({ message: 'Error logging in' });
   }
 });
 
 // Get current user
-router.get('/me', auth, async (req, res) => {
-  res.json(req.user);
+router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.uid) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const user = await getUserByEmail(req.user.email);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.json({ user });
+  } catch (error) {
+    console.error('Get User Error:', error);
+    res.status(500).json({ message: 'Error getting user data' });
+  }
 });
 
 // Update user profile
-router.patch('/me', auth, async (req, res) => {
-  const updates = Object.keys(req.body);
-  const allowedUpdates = ['name', 'sobrietyDate', 'addictionType'];
-  const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-  if (!isValidOperation) {
-    return res.status(400).json({ message: 'Invalid updates' });
-  }
-
+router.patch('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    updates.forEach(update => {
-      req.user[update] = req.body[update];
-    });
+    if (!req.user?.uid) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const user = await getUserByEmail(req.user.email);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const updates = req.body;
+    const allowedUpdates = ['name', 'sobrietyDate', 'addictionType', 'dailyBudget'];
     
-    await req.user.save();
-    res.json(req.user);
+    // Filter out non-allowed updates
+    Object.keys(updates).forEach(key => {
+      if (!allowedUpdates.includes(key)) {
+        delete updates[key];
+      }
+    });
+
+    const updatedUser = await updateUser(user.id, updates);
+    res.json({ user: updatedUser });
   } catch (error) {
-    res.status(400).json({ message: 'Error updating profile' });
+    console.error('Update User Error:', error);
+    res.status(500).json({ message: 'Error updating user data' });
   }
 });
 

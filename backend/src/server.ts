@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
+import checklistRoutes from './routes/checklist.routes';
+import './config/firebase'; // Initialize Firebase
 
 dotenv.config();
 
@@ -12,19 +13,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/addiction-recovery-toolbox';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((error) => console.error('MongoDB connection error:', error));
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/checklist', checklistRoutes);
 // app.use('/api/progress', progressRoutes);
 // app.use('/api/blog', blogRoutes);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });
