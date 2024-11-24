@@ -1,7 +1,8 @@
 #!/bin/bash
 
 API_URL="https://addiction-recovery-toolbox.onrender.com/api"
-EMAIL="test@example.com"
+TIMESTAMP=$(date +%s)
+EMAIL="test${TIMESTAMP}@example.com"
 PASSWORD="Test123!@"  # Updated to meet Firebase password requirements
 NAME="Test User"
 
@@ -10,6 +11,7 @@ curl -s "$API_URL/../" | jq .
 echo
 
 echo "1. Testing registration..."
+echo "Using email: $EMAIL"
 REGISTER_RESPONSE=$(curl -s -X POST "$API_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"name\":\"$NAME\"}")
@@ -26,5 +28,5 @@ echo "$LOGIN_RESPONSE" | jq .
 echo
 
 # Note: In a real frontend app, you would get the token from Firebase Auth
-# For testing, we'll skip the token-protected endpoints since we can't get a real Firebase token here
+# For testing, we'll skip the token-protected endpoints as they require Firebase Authentication from the frontend
 echo "Note: Skipping token-protected endpoints as they require Firebase Authentication from the frontend."
