@@ -4,14 +4,16 @@ import { createUser, getUserByEmail } from '../models/user';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Starting registration process...');
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
+      console.log('Missing required fields:', { email: !!email, password: !!password, name: !!name });
       res.status(400).json({ message: 'Missing required fields' });
       return;
     }
 
-    console.log('Creating Firebase Auth user...');
+    console.log('Creating Firebase Auth user...', { email, name });
     // Create user in Firebase Auth
     const userRecord = await auth.createUser({
       email,
@@ -42,8 +44,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error('Registration Error:', error);
     if (error instanceof Error) {
-      res.status(400).json({ message: `Error creating user: ${error.message}` });
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      res.status(400).json({ 
+        message: `Error creating user: ${error.message}`,
+        error: error.name
+      });
     } else {
+      console.error('Unknown error type:', error);
       res.status(400).json({ message: 'Error creating user' });
     }
   }
