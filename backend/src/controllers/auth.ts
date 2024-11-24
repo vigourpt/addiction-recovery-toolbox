@@ -6,13 +6,21 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
+    if (!email || !password || !name) {
+      res.status(400).json({ message: 'Missing required fields' });
+      return;
+    }
+
+    console.log('Creating Firebase Auth user...');
     // Create user in Firebase Auth
     const userRecord = await auth.createUser({
       email,
       password,
       displayName: name
     });
+    console.log('Firebase Auth user created:', userRecord.uid);
 
+    console.log('Creating Firestore user document...');
     // Create user in Firestore
     const user = await createUser({
       email,
@@ -21,6 +29,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       addictionType: undefined,
       dailyBudget: undefined
     });
+    console.log('Firestore user document created:', user.id);
 
     res.status(201).json({
       message: 'User created successfully',
@@ -32,6 +41,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error('Registration Error:', error);
-    res.status(400).json({ message: 'Error creating user' });
+    if (error instanceof Error) {
+      res.status(400).json({ message: `Error creating user: ${error.message}` });
+    } else {
+      res.status(400).json({ message: 'Error creating user' });
+    }
   }
 };
