@@ -27,9 +27,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const user = await createUser({
       email,
       name,
-      sobrietyDate: undefined,
-      addictionType: undefined,
-      dailyBudget: undefined
+      sobrietyDate: null,
+      addictionType: null,
+      dailyBudget: null
     });
     console.log('Firestore user document created:', user.id);
 

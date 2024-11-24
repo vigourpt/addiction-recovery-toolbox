@@ -4,18 +4,26 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  sobrietyDate?: Date;
-  addictionType?: string;
-  dailyBudget?: number;
+  sobrietyDate: Date | null;
+  addictionType: string | null;
+  dailyBudget: number | null;
 }
 
 export const usersCollection = db.collection('users');
 
 export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
-  const userRef = await db.collection('users').add(userData);
+  const userRef = await db.collection('users').add({
+    ...userData,
+    sobrietyDate: null,
+    addictionType: null,
+    dailyBudget: null
+  });
   return {
     id: userRef.id,
-    ...userData
+    ...userData,
+    sobrietyDate: null,
+    addictionType: null,
+    dailyBudget: null
   };
 };
 
