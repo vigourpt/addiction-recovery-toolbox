@@ -48,3 +48,35 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
   }
 };
+
+export const login = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    console.log('Fetching user from Firestore...');
+    const user = await getUserByEmail(email);
+    
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Note: With Firebase Auth, the actual authentication happens on the client side
+    // Here we just return the user data after verifying they exist
+    res.status(200).json({
+      message: 'User found',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    });
+  } catch (error) {
+    console.error('Login Error:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: `Login error: ${error.message}` });
+    } else {
+      res.status(500).json({ message: 'Login error' });
+    }
+  }
+};
