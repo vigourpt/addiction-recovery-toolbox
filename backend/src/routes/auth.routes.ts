@@ -1,122 +1,38 @@
-import express, { Router, Request, Response } from 'express';
-import { auth } from '../config/firebase';
-import { createUser, getUserByEmail, updateUser } from '../models/user';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import express from 'express';
+import { register } from '../controllers/auth';
 
-const router: Router = express.Router();
+const router = express.Router();
 
-// Register
-router.post('/register', async (req: Request, res: Response): Promise<void> => {
+// Register endpoint
+router.post('/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
-
-    // Create user in Firebase Auth
-    const userRecord = await auth.createUser({
-      email,
-      password,
-      displayName: name
-    });
-
-    // Create user in Firestore
-    const user = await createUser({
-      email,
-      name,
-      sobrietyDate: undefined,
-      addictionType: undefined,
-      dailyBudget: undefined
-    });
-
-    res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      }
-    });
-  } catch (error) {
-    console.error('Registration Error:', error);
-    res.status(400).json({ message: 'Error creating user' });
-  }
-});
-
-// Login - Note: Actual login is handled by Firebase on the client
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { email } = req.body;
-    const user = await getUserByEmail(email);
-
-    if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
-    }
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        sobrietyDate: user.sobrietyDate,
-        addictionType: user.addictionType,
-        dailyBudget: user.dailyBudget
-      }
-    });
-  } catch (error) {
-    console.error('Login Error:', error);
-    res.status(500).json({ message: 'Error logging in' });
-  }
-});
-
-// Get current user
-router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    if (!req.user?.uid) {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-
-    const user = await getUserByEmail(req.user.email);
-    if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
-    }
-
-    res.json({ user });
-  } catch (error) {
-    console.error('Get User Error:', error);
-    res.status(500).json({ message: 'Error getting user data' });
-  }
-});
-
-// Update user profile
-router.patch('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    if (!req.user?.uid) {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-
-    const user = await getUserByEmail(req.user.email);
-    if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
-    }
-
-    const updates = req.body;
-    const allowedUpdates = ['name', 'sobrietyDate', 'addictionType', 'dailyBudget'];
     
-    // Filter out non-allowed updates
-    Object.keys(updates).forEach(key => {
-      if (!allowedUpdates.includes(key)) {
-        delete updates[key];
-      }
-    });
+    if (!email || !password || !name) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
 
-    const updatedUser = await updateUser(user.id, updates);
-    res.json({ user: updatedUser });
+    await register(req, res);
   } catch (error) {
-    console.error('Update User Error:', error);
-    res.status(500).json({ message: 'Error updating user data' });
+    console.error('Error in register route:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Login endpoint
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Login logic is now handled by Firebase Authentication on the frontend
+    res.status(400).json({ message: 'Please use Firebase Authentication' });
+  } catch (error) {
+    console.error('Error in login route:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
