@@ -21,9 +21,9 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const user = await createUser({
       email,
       name,
-      sobrietyDate: null,
-      addictionType: null,
-      dailyBudget: null
+      sobrietyDate: undefined,
+      addictionType: undefined,
+      dailyBudget: undefined
     });
 
     res.status(201).json({

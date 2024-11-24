@@ -3,30 +3,20 @@ import { db } from '../config/firebase';
 export interface User {
   id: string;
   email: string;
-  password?: string;
   name: string;
   sobrietyDate?: Date;
   addictionType?: string;
   dailyBudget?: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export const usersCollection = db.collection('users');
 
-export const createUser = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const now = new Date();
-  const userRef = usersCollection.doc();
-  
-  const user: User = {
+export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+  const userRef = await db.collection('users').add(userData);
+  return {
     id: userRef.id,
-    ...userData,
-    createdAt: now,
-    updatedAt: now
+    ...userData
   };
-
-  await userRef.set(user);
-  return user;
 };
 
 export const getUserById = async (id: string): Promise<User | null> => {
@@ -36,25 +26,33 @@ export const getUserById = async (id: string): Promise<User | null> => {
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-  const userSnapshot = await usersCollection.where('email', '==', email).limit(1).get();
-  if (userSnapshot.empty) return null;
-  const userDoc = userSnapshot.docs[0];
-  return { id: userDoc.id, ...userDoc.data() } as User;
+  const usersRef = db.collection('users');
+  const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data() as Omit<User, 'id'>
+  };
 };
 
-export const updateUser = async (id: string, userData: Partial<User>): Promise<User | null> => {
-  const userRef = usersCollection.doc(id);
-  const userDoc = await userRef.get();
-  
-  if (!userDoc.exists) return null;
-  
-  const updates = {
-    ...userData,
-    updatedAt: new Date()
-  };
-  
+export const updateUser = async (userId: string, updates: Partial<User>): Promise<User> => {
+  const userRef = db.collection('users').doc(userId);
   await userRef.update(updates);
-  return { id: userDoc.id, ...userDoc.data(), ...updates } as User;
+  
+  const doc = await userRef.get();
+  if (!doc.exists) {
+    throw new Error('User not found');
+  }
+
+  return {
+    id: doc.id,
+    ...doc.data() as Omit<User, 'id'>
+  };
 };
 
 export const deleteUser = async (id: string): Promise<boolean> => {
