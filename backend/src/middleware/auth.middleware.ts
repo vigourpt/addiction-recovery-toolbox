@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/user.model';
+import { auth } from '../config/firebase';
+import { getUserByEmail } from '../models/user';
 
 interface TokenPayload {
   userId: string;
@@ -16,24 +16,30 @@ declare global {
   }
 }
 
-export const auth = async (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      throw new Error();
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      res.status(401).json({ message: 'No token provided' });
+      return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
-    const user = await User.findById(decoded.userId);
-
-    if (!user) {
-      throw new Error();
-    }
-
-    req.user = user;
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await auth.verifyIdToken(token);
+    
+    // Attach the user ID to the request
+    req.user = {
+      id: decodedToken.uid,
+      email: decodedToken.email || ''
+    };
+    
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Please authenticate' });
+    console.error('Auth Middleware Error:', error);
+    res.status(401).json({ message: 'Invalid token' });
   }
 };
