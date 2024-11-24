@@ -3,7 +3,7 @@ import { auth } from '../config/firebase';
 import { createUser, getUserByEmail } from '../models/user';
 import bcrypt from 'bcryptjs';
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
@@ -18,9 +18,9 @@ export const register = async (req: Request, res: Response) => {
     const user = await createUser({
       email,
       name,
-      sobrietyDate: null,
-      addictionType: null,
-      dailyBudget: null
+      sobrietyDate: undefined,
+      addictionType: undefined,
+      dailyBudget: undefined
     });
 
     res.status(201).json({
@@ -33,7 +33,7 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Registration Error:', error);
-    res.status(500).json({ message: 'Error creating user' });
+    res.status(400).json({ message: 'Error creating user' });
   }
 };
 
